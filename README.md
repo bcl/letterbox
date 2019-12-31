@@ -27,6 +27,37 @@ email will be used to create a new maildir under the `-maildirs` path. For
 example, sending an email to user@another.com will create a new maildir at
 `/var/spool/maildirs/user`.
 
+You will likely want to create your maildirs someplace else. On my system the
+`/var/spool/maildirs` directory is owned by the user that is running `letterbox`.
+
+
+## Redirect port 25
+
+*Never* run this as root.
+
+Use a higher port, like 2525, and configure your system's firewall to redirect port 25 to it.
+For example, using nft, you can do this by adding:
+
+    # redirect 25 to 2525
+    table nat {
+      chain prerouting {
+        type nat hook prerouting priority 0;
+        tcp dport 25 dnat :2525
+      }
+      chain postrouting {
+        type nat hook postrouting priority 0;
+      }
+    }
+
+Or with iptables:
+
+    *nat
+     -A PREROUTING -p tcp -d SERVERIP --dport 25 -j REDIRECT --to-ports 2525
+     COMMIT
+
+Replace the SERVERIP with the IP of the server letterbox is running on.
+
+
 # WARNING
 
 This code is not meant to be run on the open network. Make sure it is protected behind a firewall,
