@@ -92,6 +92,34 @@ func readConfig(filename string) (letterboxConfig, error) {
 	return config, nil
 }
 
+// parseHosts fills the global allowedHosts and allowedNetworks from the cfg.Hosts list
+func parseHosts() {
+	// Convert the hosts entries into IP and IPNet
+	for _, h := range cfg.Hosts {
+		// Does it look like a CIDR?
+		_, ipv4Net, err := net.ParseCIDR(h)
+		if err == nil {
+			allowedNetworks = append(allowedNetworks, ipv4Net)
+			continue
+		}
+
+		// Does it look like an IP?
+		ip := net.ParseIP(h)
+		if ip != nil {
+			allowedHosts = append(allowedHosts, ip)
+			continue
+		}
+
+		// Does it look like a hostname?
+		ips, err := net.LookupIP(h)
+		if err == nil {
+			for _, ip := range ips {
+				allowedHosts = append(allowedHosts, ip)
+			}
+		}
+	}
+}
+
 type env struct {
 	rcpts      []smtpd.MailAddress
 	destDirs   []*maildir.Dir
@@ -100,6 +128,7 @@ type env struct {
 }
 
 func (e *env) AddRecipient(rcpt smtpd.MailAddress) error {
+	// Match the recipient against the email whitelist
 	for _, user := range cfg.Emails {
 		if rcpt.Email() == user {
 			e.rcpts = append(e.rcpts, rcpt)
@@ -206,30 +235,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error reading config file %s: %s\n", cmdline.Config, err)
 	}
-	// Convert the hosts entries into IP and IPNet
-	for _, h := range cfg.Hosts {
-		// Does it look like a CIDR?
-		_, ipv4Net, err := net.ParseCIDR(h)
-		if err == nil {
-			allowedNetworks = append(allowedNetworks, ipv4Net)
-			continue
-		}
-
-		// Does it look like an IP?
-		ip := net.ParseIP(h)
-		if ip != nil {
-			allowedHosts = append(allowedHosts, ip)
-			continue
-		}
-
-		// Does it look like a hostname?
-		ips, err := net.LookupIP(h)
-		if err == nil {
-			for _, ip := range ips {
-				allowedHosts = append(allowedHosts, ip)
-			}
-		}
-	}
+	parseHosts()
 	fmt.Printf("letterbox: %s:%d\n", cmdline.Host, cmdline.Port)
 	log.Println("Allowed Hosts")
 	for _, h := range allowedHosts {
