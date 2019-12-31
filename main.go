@@ -77,7 +77,7 @@ var cfg letterboxConfig
 var allowedHosts []net.IP
 var allowedNetworks []*net.IPNet
 
-// reads a TOML configuration file and returns a slice of settings
+// readConfig reads a TOML configuration file and returns a slice of settings
 /*
    Example TOML file:
 
@@ -120,6 +120,7 @@ func parseHosts() {
 	}
 }
 
+// smtpd.Envelope interface, with some extra data for letterbox delivery
 type env struct {
 	rcpts      []smtpd.MailAddress
 	destDirs   []*maildir.Dir
@@ -127,6 +128,8 @@ type env struct {
 	tmpfile    string
 }
 
+// AddRecipient is called when RCPT TO is received
+// It checks the email against the whitelist and rejects it if it is not an exact match
 func (e *env) AddRecipient(rcpt smtpd.MailAddress) error {
 	// Match the recipient against the email whitelist
 	for _, user := range cfg.Emails {
@@ -138,6 +141,8 @@ func (e *env) AddRecipient(rcpt smtpd.MailAddress) error {
 	return errors.New("Recipient not in whitelist")
 }
 
+// BeginData is called when DATA is received
+// It sanitizes the revipient email and creates any missing maildirs
 func (e *env) BeginData() error {
 	if len(e.rcpts) == 0 {
 		return smtpd.SMTPError("554 5.5.1 Error: no valid recipients")
@@ -174,6 +179,8 @@ func (e *env) BeginData() error {
 	return nil
 }
 
+// Write is called for each line of the email
+// It supports writing to multiple recipients at the same time.
 func (e *env) Write(line []byte) error {
 	for _, delivery := range e.deliveries {
 		_, err := delivery.Write(line)
@@ -186,7 +193,9 @@ func (e *env) Write(line []byte) error {
 	return nil
 }
 
+// Close is called when the connection is closed
 // The server really should call this with error status from outside
+// we have no way to know if this is in response to an error or not.
 func (e *env) Close() error {
 	for _, delivery := range e.deliveries {
 		err := delivery.Close()
@@ -197,6 +206,9 @@ func (e *env) Close() error {
 	return nil
 }
 
+// onNewConnection is called when a client connects to letterbox
+// It checks the client IP against the allowedHosts and allowedNetwork lists,
+// rejecting the connection if it doesn't match.
 func onNewConnection(c smtpd.Connection) error {
 	client, _, err := net.SplitHostPort(c.Addr().String())
 	if err != nil {
@@ -223,6 +235,9 @@ func onNewConnection(c smtpd.Connection) error {
 	return errors.New("Client IP not allowed")
 }
 
+// onNewMail is called when a new connection is allowed
+// it creates a new envelope struct which is used to hold the information about
+// the recipients.
 func onNewMail(c smtpd.Connection, from smtpd.MailAddress) (smtpd.Envelope, error) {
 	log.Printf("letterbox: new mail from %q", from)
 	return &env{}, nil
