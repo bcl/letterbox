@@ -100,12 +100,13 @@ type env struct {
 }
 
 func (e *env) AddRecipient(rcpt smtpd.MailAddress) error {
-	if strings.HasPrefix(rcpt.Email(), "bad@") {
-		return errors.New("we don't send email to bad@")
+	for _, user := range cfg.Emails {
+		if rcpt.Email() == user {
+			e.rcpts = append(e.rcpts, rcpt)
+			return nil
+		}
 	}
-	// Check the recipients against the whitelist. Only append ones that pass
-	e.rcpts = append(e.rcpts, rcpt)
-	return nil
+	return errors.New("Recipient not in whitelist")
 }
 
 func (e *env) BeginData() error {
@@ -121,7 +122,6 @@ func (e *env) BeginData() error {
 		// Eliminate anything that looks like a path
 		user := path.Base(path.Clean(strings.Split(rcpt.Email(), "@")[0]))
 
-		// TODO filter recipients based on a whitelist
 		// TODO reroute mail based on /etc/aliases
 
 		// Add a new maildir for each recipient
@@ -201,7 +201,8 @@ func onNewMail(c smtpd.Connection, from smtpd.MailAddress) (smtpd.Envelope, erro
 
 func main() {
 	parseArgs()
-	cfg, err := readConfig(cmdline.Config)
+	var err error
+	cfg, err = readConfig(cmdline.Config)
 	if err != nil {
 		log.Fatalf("Error reading config file %s: %s\n", cmdline.Config, err)
 	}
