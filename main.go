@@ -38,6 +38,7 @@ import (
 	"github.com/luksen/maildir"
 	"log"
 	"net"
+	"os"
 	"path"
 	"strings"
 )
@@ -48,6 +49,8 @@ type cmdlineArgs struct {
 	Host     string // Host IP or name to bind to
 	Port     int    // Port to bind to
 	Maildirs string // Path to top level of the user Maildirs
+	Logfile  string // Path to logfile
+	Debug    bool   // Log debugging information
 }
 
 /* commandline defaults */
@@ -56,6 +59,8 @@ var cmdline = cmdlineArgs{
 	Host:     "",
 	Port:     2525,
 	Maildirs: "/var/spool/maildirs",
+	Logfile:  "",
+	Debug:    false,
 }
 
 /* parseArgs handles parsing the cmdline args and setting values in the global cmdline struct */
@@ -64,6 +69,8 @@ func parseArgs() {
 	flag.StringVar(&cmdline.Host, "host", cmdline.Host, "Host IP or name to bind to")
 	flag.IntVar(&cmdline.Port, "port", cmdline.Port, "Port to bind to")
 	flag.StringVar(&cmdline.Maildirs, "maildirs", cmdline.Maildirs, "Path to the top level of the user Maildirs")
+	flag.StringVar(&cmdline.Logfile, "log", cmdline.Logfile, "Path to logfile")
+	flag.BoolVar(&cmdline.Debug, "debug", cmdline.Debug, "Log debugging information")
 
 	flag.Parse()
 }
@@ -245,6 +252,17 @@ func onNewMail(c smtpd.Connection, from smtpd.MailAddress) (smtpd.Envelope, erro
 
 func main() {
 	parseArgs()
+
+	// Setup logging to a file if selected
+	if len(cmdline.Logfile) > 0 {
+		f, err := os.OpenFile(cmdline.Logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
+		if err != nil {
+			log.Fatalf("Error opening logfile: %s", err)
+		}
+		defer f.Close()
+		log.SetOutput(f)
+	}
+
 	var err error
 	cfg, err = readConfig(cmdline.Config)
 	if err != nil {
