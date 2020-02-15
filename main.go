@@ -75,6 +75,13 @@ func parseArgs() {
 	flag.Parse()
 }
 
+// Only log if -debug has been passed to the program
+func logDebugf(format string, v ...interface{}) {
+	if cmdline.Debug {
+		log.Printf(format, v...)
+	}
+}
+
 type letterboxConfig struct {
 	Hosts  []string `toml:"hosts"`
 	Emails []string `toml:"emails"`
@@ -157,7 +164,7 @@ func (e *env) BeginData() error {
 
 	for _, rcpt := range e.rcpts {
 		if !strings.Contains(rcpt.Email(), "@") {
-			log.Printf("Skipping recipient: %s", rcpt)
+			logDebugf("Skipping recipient: %s", rcpt)
 			continue
 		}
 		// Eliminate anything that looks like a path
@@ -223,22 +230,22 @@ func onNewConnection(c smtpd.Connection) error {
 		return errors.New("Problem parsing client address")
 	}
 	clientIP := net.ParseIP(client)
-	log.Printf("Connection from %s\n", clientIP.String())
+	logDebugf("Connection from %s\n", clientIP.String())
 	for _, h := range allowedHosts {
 		if h.Equal(clientIP) {
-			log.Printf("Connection from %s allowed by hosts\n", clientIP.String())
+			logDebugf("Connection from %s allowed by hosts\n", clientIP.String())
 			return nil
 		}
 	}
 
 	for _, n := range allowedNetworks {
 		if n.Contains(clientIP) {
-			log.Printf("Connection from %s allowed by network\n", clientIP.String())
+			logDebugf("Connection from %s allowed by network\n", clientIP.String())
 			return nil
 		}
 	}
 
-	log.Printf("Connection from %s rejected\n", clientIP.String())
+	logDebugf("Connection from %s rejected\n", clientIP.String())
 	return errors.New("Client IP not allowed")
 }
 
@@ -246,7 +253,7 @@ func onNewConnection(c smtpd.Connection) error {
 // it creates a new envelope struct which is used to hold the information about
 // the recipients.
 func onNewMail(c smtpd.Connection, from smtpd.MailAddress) (smtpd.Envelope, error) {
-	log.Printf("letterbox: new mail from %q", from)
+	logDebugf("letterbox: new mail from %q", from)
 	return &env{}, nil
 }
 
@@ -269,7 +276,7 @@ func main() {
 		log.Fatalf("Error reading config file %s: %s\n", cmdline.Config, err)
 	}
 	parseHosts()
-	fmt.Printf("letterbox: %s:%d\n", cmdline.Host, cmdline.Port)
+	log.Printf("letterbox: %s:%d", cmdline.Host, cmdline.Port)
 	log.Println("Allowed Hosts")
 	for _, h := range allowedHosts {
 		log.Printf("    %s\n", h.String())
