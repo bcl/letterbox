@@ -36,6 +36,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/bradfitz/go-smtpd/smtpd"
 	"github.com/luksen/maildir"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -98,9 +99,9 @@ var allowedNetworks []*net.IPNet
    hosts = ["192.168.101.0/24", "fozzy.brianlane.com", "192.168.103.15"]
    emails = ["user@domain.com", "root@domain.com"]
 */
-func readConfig(filename string) (letterboxConfig, error) {
+func readConfig(r io.Reader) (letterboxConfig, error) {
 	var config letterboxConfig
-	if _, err := toml.DecodeFile(filename, &config); err != nil {
+	if _, err := toml.DecodeReader(r, &config); err != nil {
 		return config, err
 	}
 	return config, nil
@@ -271,7 +272,12 @@ func main() {
 	}
 
 	var err error
-	cfg, err = readConfig(cmdline.Config)
+	cfgFile, err := os.Open(cmdline.Config)
+	if err != nil {
+		log.Fatalf("Error opening config file: %s", err)
+	}
+	cfg, err = readConfig(cfgFile)
+	cfgFile.Close()
 	if err != nil {
 		log.Fatalf("Error reading config file %s: %s\n", cmdline.Config, err)
 	}
