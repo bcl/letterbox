@@ -128,9 +128,7 @@ func parseHosts() {
 		// Does it look like a hostname?
 		ips, err := net.LookupIP(h)
 		if err == nil {
-			for _, ip := range ips {
-				allowedHosts = append(allowedHosts, ip)
-			}
+			allowedHosts = append(allowedHosts, ips...)
 		}
 	}
 }
@@ -140,7 +138,6 @@ type env struct {
 	rcpts      []smtpd.MailAddress
 	destDirs   []*maildir.Dir
 	deliveries []*maildir.Delivery
-	tmpfile    string
 }
 
 // AddRecipient is called when RCPT TO is received
