@@ -83,10 +83,24 @@ func TestCaptureOutput(t *testing.T) {
 
 func TestLogDebug(t *testing.T) {
 	// test with default config, no output
+	out := captureOutput(func() {
+		logDebugf("logging debug info")
+	}, false)
+
+	if strings.Contains(out, "logging debug info") {
+		t.Fatal("unexpected debug logging")
+	}
 
 	// set global debug to true
-	// check output
+	cmdline.Debug = true
+	out = captureOutput(func() {
+		logDebugf("logging debug info")
+	}, false)
+	cmdline.Debug = false
 
+	if !strings.Contains(out, "logging debug info") {
+		t.Fatal("Missing debug string")
+	}
 }
 
 func TestReadConfig(t *testing.T) {
