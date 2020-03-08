@@ -104,5 +104,35 @@ func TestLogDebug(t *testing.T) {
 }
 
 func TestReadConfig(t *testing.T) {
+	// Empty config
+	r := bytes.NewReader([]byte(""))
+	cfg, err := readConfig(r)
+	if err != nil {
+		t.Fatalf("Error reading empty config: %s", err)
+	}
+	// Should be empty
+	if len(cfg.Hosts) > 0 || len(cfg.Emails) > 0 {
+		t.Fatalf("Config not empty: %#v", cfg)
+	}
+
+	// Config with hosts and emails
+	r = bytes.NewReader([]byte(`
+		hosts = ["192.168.101.0/24", "127.0.0.1"]
+		emails = ["root@frobozz.org", "admin@guetech.org"]`))
+	cfg, err = readConfig(r)
+	if err != nil {
+		t.Fatalf("Error reading full config: %s", err)
+	}
+	if len(cfg.Hosts) != 2 || len(cfg.Emails) != 2 {
+		t.Fatalf("Wrong number of values in config: %#v", cfg)
+	}
+	if cfg.Hosts[0] != "192.168.101.0/24" ||
+		cfg.Hosts[1] != "127.0.0.1" {
+		t.Fatalf("Hosts list is incorrect: %#v", cfg.Hosts)
+	}
+	if cfg.Emails[0] != "root@frobozz.org" ||
+		cfg.Emails[1] != "admin@guetech.org" {
+		t.Fatalf("Emails list is incorrect: %#v", cfg.Emails)
+	}
 
 }
