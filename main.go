@@ -57,7 +57,7 @@ type cmdlineArgs struct {
 /* commandline defaults */
 var cmdline = cmdlineArgs{
 	Config:   "letterbox.toml",
-	Host:     "",
+	Host:     "127.0.0.1",
 	Port:     2525,
 	Maildirs: "/var/spool/maildirs",
 	Logfile:  "",
